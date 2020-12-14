@@ -40,6 +40,8 @@ TFTP协议定义了五种类型的数据包
 
 > https://blog.csdn.net/mango_girl/article/details/45332095
 
+把文件放到tftpd64.exe同目录下可上传/下载
+
 ## Socket
 
 > https://www.cnblogs.com/skyfsm/p/6287787.html
@@ -51,4 +53,16 @@ TFTP协议定义了五种类型的数据包
 > https://github.com/ideawu/tftpx/blob/master/tftpx.h
 
 > https://blog.csdn.net/dadizhiying1215/article/details/8546927
+
++ 对于packet部分字段以0结尾，不是'0'
+
+  ```c
+  sprintf(snd->req, "%s%c%s%c", tc->file_name, 0, tc->mode, 0);
+  ```
+
+  来构造request
+
++ 注意htons()和ntohs()对**网络字节序**(从高到低的顺序存储，网络上的统一约定)和本地字节序的转换
+
++ ack的blocknum与data 的 相对应
 

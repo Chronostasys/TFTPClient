@@ -1,6 +1,13 @@
 /* TFTP Server */
 
-/* TODO:ERROR Code 4 */
+
+/* download finishi */
+/* TODO: 
+    1.upload
+    2.throughout
+    3.log
+    4.p2c2p
+            */
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -22,8 +29,9 @@ int main(void) {
     char file_name[50];
     char port4addr[20]="69";
     int type;
-    tftp_c *tc = NULL;
 
+    tftp_c *tc = NULL;
+//    printf("%d %d\n",sizeof(uint16_t),sizeof(ushort));
     log_fp = fopen("log.txt","w+");
 
     cout<<"\nplease enter TFTP-Server host:";
@@ -40,7 +48,7 @@ int main(void) {
 
 
     /* Connect to TFTP Server */ 
-    tc = tftp_connect(host_name, port4addr,MODE_OCTET,type,file_name); 
+    tc = tftp_connect(host_name, port4addr,(char *)MODE_OCTET,type,file_name); 
     if (!tc) {
         cout<<"ERROR:fail to connect to server"<<endl;
         fprintf(log_fp,"ERROR:fail to connect to server\n");
@@ -105,12 +113,11 @@ int tftp_recv(tftp_c *tc) {
     tftp_rrq *snd = (tftp_rrq *)malloc(TFTP_RRQ_LEN(tc->file_name,tc->mode));
     tftp_recv_pack recv;
     tftp_ack ack;
-    int re;
+    int re,bp_re;
     uint16_t blocknum = 1;
-
     /* request head */
     snd->opcode = htons(OPCODE_RRQ);
-    sprintf(snd->req, "%s%d%s%d", tc->file_name, 0, tc->mode, 0);
+    sprintf(snd->req, "%s%c%s%c", tc->file_name, 0, tc->mode, 0);
 
     /* send request 2 server */
     re = sendto(tc->sockfd, snd, TFTP_RRQ_LEN(tc->file_name,tc->mode), 0, ((sockaddr *)&tc->addr_server), tc->addr_len);
@@ -119,18 +126,16 @@ int tftp_recv(tftp_c *tc) {
         fprintf(log_fp,"ERROR:fail to sent request to server\n");
     }
     /* ========================DEBUG================================= */
-    cout<<"========================DEBUG================================="<<endl;
+   /* cout<<"========================DEBUG================================="<<endl;
     cout<<"snd.opcode = "<<ntohs(snd->opcode)<<"\nreq.head = "<<snd->req<<endl;
     cout<<"re = "<<re<<endl;
-    cout<<"========================DEBUG================================="<<endl;
+    cout<<"========================DEBUG================================="<<endl;*/
 
     FILE *fp = fopen(tc->file_name, "w+");
-
+ //   fprintf(fp, "%s", "test");
     /* begin recv data */
     while (1) {
-        cout<<"11111"<<endl;
         re = recvfrom(tc->sockfd, &recv, sizeof(tftp_recv_pack), 0, ((sockaddr *)&tc->addr_server), &tc->addr_len);
-        cout<<"22222"<<endl;
         
         if (re == -1) {
             cout<<"ERROR:fail to recv from server"<<endl;
@@ -140,22 +145,22 @@ int tftp_recv(tftp_c *tc) {
         
         /* recv success & send ACK */
         //TODO:Throughput
-        if (recv.opcode == htons(OPCODE_DATA) && recv.bnum_ecode == blocknum) {
+        if (recv.opcode == htons(OPCODE_DATA) && recv.bnum_ecode == htons(blocknum)) {
             cout<<"DATA: BlockNum = "<<ntohs(recv.bnum_ecode)<<", DataSize = "<<(re - 4)<<endl;
             fprintf(log_fp,"DATA: BlockNum = %d, DataSize = %d\n", ntohs(recv.bnum_ecode), (re-4));
+            fprintf(fp,"%s",recv.data);
             /* Send ACK */
             ack.opcode = htons(OPCODE_ACK);
-            ack.blocknum = blocknum;
-            re = sendto(tc->sockfd, &ack, sizeof(tftp_ack), 0 , ((sockaddr *)&tc->addr_server), tc->addr_len);
-            fprintf(fp,"%s",recv.data);
+            ack.blocknum = recv.bnum_ecode;
+            sendto(tc->sockfd, &ack, sizeof(tftp_ack), 0 , ((sockaddr *)&tc->addr_server), tc->addr_len);
         }
         /* ========================DEBUG================================= */
-        cout<<"========================DEBUG================================="<<endl;
+        /*cout<<"========================DEBUG================================="<<endl;
         cout<<"re = "<<re<<endl;
         cout<<"recv.opcode = "<<ntohs(recv.opcode)<<endl;
         cout<<"recv.bnum_ecode = "<<ntohs(recv.bnum_ecode)<<endl;
-        cout<<"recv.data = "<<recv.data<<endl;
-        cout<<"========================DEBUG================================="<<endl;      
+        cout<<"blocknum = "<<blocknum<<endl;
+        cout<<"========================DEBUG================================="<<endl;*/
 
 
         /* the last block size < 512, end recv */
