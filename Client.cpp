@@ -22,6 +22,7 @@ using namespace std;
 
 tftp_c *tftp_connect(char *host_name, char *port4addr,char *mode, int type, char *file_name);
 int tftp_recv(tftp_c *tc);
+int tftp_put(tftp_c *tc);
 
 
 int main(void) {
@@ -58,8 +59,11 @@ int main(void) {
     fprintf(log_fp,"success to connect to server\n");
 
     /* Download or Upload */
-    if (!type) {
+    if (!type) { // 0 -> Download
         tftp_recv(tc);
+    }
+    else { // 1 -> Upload
+        tftp_put(tc);
     }
     return 0;
 }
@@ -122,8 +126,8 @@ int tftp_recv(tftp_c *tc) {
     /* send request 2 server */
     re = sendto(tc->sockfd, snd, TFTP_RRQ_LEN(tc->file_name,tc->mode), 0, ((sockaddr *)&tc->addr_server), tc->addr_len);
     if (re == -1) {
-        cout<<"ERROR:fail to sent request to server"<<endl;
-        fprintf(log_fp,"ERROR:fail to sent request to server\n");
+        cout<<"ERROR:fail to send request to server"<<endl;
+        fprintf(log_fp,"ERROR:fail to send request to server\n");
     }
     /* ========================DEBUG================================= */
    /* cout<<"========================DEBUG================================="<<endl;
@@ -160,7 +164,7 @@ int tftp_recv(tftp_c *tc) {
         cout<<"recv.opcode = "<<ntohs(recv.opcode)<<endl;
         cout<<"recv.bnum_ecode = "<<ntohs(recv.bnum_ecode)<<endl;
         cout<<"blocknum = "<<blocknum<<endl;
-        cout<<"========================DEBUG================================="<<endl;*/
+        cout<<"========================DEBUG=z================================"<<endl;*/
 
 
         /* the last block size < 512, end recv */
@@ -172,5 +176,67 @@ int tftp_recv(tftp_c *tc) {
         blocknum++;
     }
     fclose(fp);
+    return 1;
+}
+
+int tftp_put(tftp_c *tc) {
+    tftp_wrq *snd = (tftp_wrq *)malloc(TFTP_WRQ_LEN(tc->file_name,tc->mode));
+    tftp_recv_pack recv;
+    tftp_data snd_data;
+    int re = 0;
+    /* WRQ msg */
+    snd->opcode = htons(OPCODE_WRQ);
+    sprintf(snd->req, "%s%c%s%c", tc->file_name, 0, tc->mode, 0);
+
+    /* send WRQ 2 server */
+    re = sendto(tc->sockfd, snd, TFTP_WRQ_LEN(tc->file_name, tc->mode), 0, ((sockaddr *)&tc->addr_server), tc->addr_len);
+    if (re == -1) {
+        cout<<"ERROR:fail to send request to server"<<endl;
+        fprintf(log_fp,"ERROR:fail to send request to server");
+    }
+    
+    re = recvfrom(tc->sockfd, &recv, sizeof(tftp_recv_pack), 0, ((sockaddr *)&tc->addr_server), &tc->addr_len);
+    if (re == -1) {
+            cout<<"ERROR:fail to recv from server"<<endl;
+            fprintf(log_fp,"ERROR:fail to recv from server\n");
+            return 0;
+
+    }/* recv blocknum=0 => start transfer */
+    if (recv.opcode == htons(OPCODE_ACK) && recv.bnum_ecode == htons(0)) {
+        FILE *fp = fopen(tc->file_name, "r", "w+");
+        if (fp = NULL) {
+            cout<<"ERROR:wrong file"<<endl;
+            fprintf(log_fp, "ERROR:wrong file\n");
+            return 0;
+        }
+
+        int blocknum = 1;
+        int size_t;
+        snd_data.opcode = htons(OPCODE_DATA);
+        while (1) {
+            /* init data packet */
+            memset(snd_data.data,0 ,sizeof(snd_data.data));
+            snd_data.blocknum = htons(blocknum);
+            size_t = fread(snd_data.data, 1, DATA_SIZE, fp);
+            /* send data 2 server */
+            re = sendto(tc->sockfd, &snd_data, size_t+4, 0, ((sockaddr *)&tc->addr_server), tc->addr_len);
+            if (re == -1) {
+                cout<<"ERROR: fail to send data to server"<<endl;
+                fprintf(log_fp,"ERROR: fail to send data to server\n");
+                return 0;
+            }
+            /* recv from server (ACK|ERROR) */
+            re = recvfrom(tc->sockfd, &recv, sizeof(tftp_recv_pack), 0, ((sockaddr *)&tc->addr_server), &tc->addr_len);
+            if (re == -1) {
+                cout<<"ERROR: fail to recv ACK from server"<<endl;
+                fprintf(log_fp, "ERROR: fail to recv ACK from server\n");
+                return 0;
+            }
+            /* ack yes */
+            if (recv.opcode == htons(OPCODE_ACK))
+            blocknum++;
+        }
+    }
+
     return 1;
 }
