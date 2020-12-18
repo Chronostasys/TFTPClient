@@ -1,12 +1,11 @@
-/* TFTP Server */
+/* TFTP Client */
 
 
-/* download finishi */
+/* upload finish */
 /* TODO: 
-    1.upload
-    2.throughout
-    3.log
-    4.p2c2p
+    1.throughout
+    2.log
+    3.p2c2p
             */
 #include <stdio.h>
 #include <sys/types.h>
@@ -49,7 +48,7 @@ int main(void) {
 
 
     /* Connect to TFTP Server */ 
-    tc = tftp_connect(host_name, port4addr,(char *)MODE_OCTET,type,file_name); 
+    tc = tftp_connect(host_name, port4addr,(char *)MODE_NETASCII,type,file_name); 
     if (!tc) {
         cout<<"ERROR:fail to connect to server"<<endl;
         fprintf(log_fp,"ERROR:fail to connect to server\n");
@@ -187,14 +186,12 @@ int tftp_put(tftp_c *tc) {
     /* WRQ msg */
     snd->opcode = htons(OPCODE_WRQ);
     sprintf(snd->req, "%s%c%s%c", tc->file_name, 0, tc->mode, 0);
-
     /* send WRQ 2 server */
     re = sendto(tc->sockfd, snd, TFTP_WRQ_LEN(tc->file_name, tc->mode), 0, ((sockaddr *)&tc->addr_server), tc->addr_len);
     if (re == -1) {
         cout<<"ERROR:fail to send request to server"<<endl;
         fprintf(log_fp,"ERROR:fail to send request to server");
     }
-    
     re = recvfrom(tc->sockfd, &recv, sizeof(tftp_recv_pack), 0, ((sockaddr *)&tc->addr_server), &tc->addr_len);
     if (re == -1) {
             cout<<"ERROR:fail to recv from server"<<endl;
@@ -202,22 +199,30 @@ int tftp_put(tftp_c *tc) {
             return 0;
 
     }/* recv blocknum=0 => start transfer */
+  /*  cout<<"========================DEBUG================================="<<endl;
+                cout<<"re = "<<re<<endl;
+                cout<<"recv.opcode = "<<ntohs(recv.opcode)<<endl;
+                cout<<"recv.bnum_ecode = "<<ntohs(recv.bnum_ecode)<<endl;
+         //       cout<<"blocknum = "<<blocknum<<endl;
+                cout<<"========================DEBUG=z================================"<<endl;*/
     if (recv.opcode == htons(OPCODE_ACK) && recv.bnum_ecode == htons(0)) {
-        FILE *fp = fopen(tc->file_name, "r", "w+");
-        if (fp = NULL) {
+        FILE *fp = fopen(tc->file_name, "r");
+    //    printf("%s\n",tc->file_name);
+        if (fp == NULL) {
             cout<<"ERROR:wrong file"<<endl;
             fprintf(log_fp, "ERROR:wrong file\n");
             return 0;
         }
-
         int blocknum = 1;
         int size_t;
         snd_data.opcode = htons(OPCODE_DATA);
+        
         while (1) {
             /* init data packet */
             memset(snd_data.data,0 ,sizeof(snd_data.data));
             snd_data.blocknum = htons(blocknum);
             size_t = fread(snd_data.data, 1, DATA_SIZE, fp);
+        //    printf("%s\n", snd_data.data);  
             /* send data 2 server */
             re = sendto(tc->sockfd, &snd_data, size_t+4, 0, ((sockaddr *)&tc->addr_server), tc->addr_len);
             if (re == -1) {
@@ -233,10 +238,22 @@ int tftp_put(tftp_c *tc) {
                 return 0;
             }
             /* ack yes */
-            if (recv.opcode == htons(OPCODE_ACK))
-            blocknum++;
+            if (recv.opcode == htons(OPCODE_ACK) && recv.bnum_ecode == htons(blocknum))
+                blocknum++;
+                /* ========================DEBUG================================= */
+            /* cout<<"========================DEBUG================================="<<endl;
+            cout<<"re = "<<re<<endl;
+            cout<<"recv.opcode = "<<ntohs(recv.opcode)<<endl;
+            cout<<"recv.bnum_ecode = "<<ntohs(recv.bnum_ecode)<<endl;
+            cout<<"blocknum = "<<blocknum<<endl;
+            cout<<"========================DEBUG================================"<<endl; */
+            if (size_t != DATA_SIZE) {
+                printf("upload success !\n");
+                fprintf(log_fp, "upload success !\n");
+                break;
+            }
         }
+        fclose(fp);
     }
-
     return 1;
 }

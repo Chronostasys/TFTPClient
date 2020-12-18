@@ -24,12 +24,12 @@ struct tftp_c { /* tftp connect handle */
 };
 
 
-#define TFTP_RRQ_LEN(f,m) (sizeof(tftp_rrq)+strlen(f)+strlen(m)+2)
+#define TFTP_RRQ_LEN(f,m) (sizeof(tftp_rrq)+strlen(f)+strlen(m)+2)  //calc length of rrq packet
 struct tftp_rrq {
     uint16_t opcode;
     char req[];
 };
-#define TFTP_WRQ_LEN(f,m) (sizeof(tftp_rrq)+strlen(f)+strlen(m)+2)
+#define TFTP_WRQ_LEN(f,m) (sizeof(tftp_rrq)+strlen(f)+strlen(m)+2)  //calc length of wrq packet
 struct tftp_wrq {
     uint16_t opcode;
     char req[];
@@ -43,13 +43,13 @@ struct tftp_recv_pack
     char data[DATA_SIZE];
 };
 
-
+/* packet Data */
 struct tftp_data {
     uint16_t opcode;
     uint16_t blocknum;
     char data[DATA_SIZE];
 };
-
+/* packet ACK */
 struct tftp_ack {
     uint16_t opcode;
     uint16_t blocknum;
