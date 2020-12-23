@@ -15,6 +15,7 @@
 #include <netdb.h>
 #include <iostream>
 #include <string.h>
+#include <time.h>
 #include "Client.h"
 
 using namespace std;
@@ -22,7 +23,7 @@ using namespace std;
 tftp_c *tftp_connect(char *host_name, char *port4addr,char *mode, int type, char *file_name);
 int tftp_recv(tftp_c *tc);
 int tftp_put(tftp_c *tc);
-
+FILE *log_fp; 
 
 int main(void) {
     char host_name[20];
@@ -32,8 +33,8 @@ int main(void) {
 
     tftp_c *tc = NULL;
 //    printf("%d %d\n",sizeof(uint16_t),sizeof(ushort));
-    log_fp = fopen("log.txt","w+");
-
+    log_fp = fopen("log.txt","a+");
+//    fclose(log_fp);
     cout<<"\nplease enter TFTP-Server host:";
     cin>>host_name;
     cout<<"\ndownload or upload(download -> 0 || upload -> 1)?:";

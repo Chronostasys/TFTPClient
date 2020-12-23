@@ -55,5 +55,5 @@ struct tftp_ack {
     uint16_t blocknum;
 };
 
-FILE *log_fp; //log
+
 
