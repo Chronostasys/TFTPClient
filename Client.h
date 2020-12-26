@@ -1,3 +1,12 @@
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <malloc.h>
+#include <stdlib.h>
+#include <netdb.h>
+#include <iostream>
+#include <string.h>
+#include <time.h>
 /* TFTP MODE */
 #define MODE_NETASCII "netascii"
 #define MODE_OCTET "octet"
@@ -55,5 +64,24 @@ struct tftp_ack {
     uint16_t blocknum;
 };
 
+/* log file: log.txt */
+FILE *log_fp;
+
+/* get time & print */
+time_t n_time;
+tm* l_time;
+
+/* time for download or upload */
+clock_t start_c, end_c;
+double time_all;
+
+/* all data size for 1 download or upload */
+double size_all;
+
+/* Func Declaration */
+tftp_c *tftp_connect(char *host_name, char *port4addr,char *mode, int type, char *file_name);//create connect with server
+int tftp_recv(tftp_c *tc);//get file from server
+int tftp_put(tftp_c *tc);//put file 2 server
+void now_time(void);//get & print now time
 
 
