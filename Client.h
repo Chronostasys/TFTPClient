@@ -6,7 +6,11 @@
 #include <netdb.h>
 #include <iostream>
 #include <string.h>
+#include <unistd.h>
 #include <time.h>
+/* TIMEOUT SET 3 SECOND */
+#define RECV_TIMEOUT 3*1000*1000
+#define SEND_TIMEOUT 12*1000*1000
 /* TFTP MODE */
 #define MODE_NETASCII "netascii"
 #define MODE_OCTET "octet"
@@ -63,6 +67,9 @@ struct tftp_ack {
     uint16_t opcode;
     uint16_t blocknum;
 };
+
+/* TIMER */
+int timer;
 
 /* log file: log.txt */
 FILE *log_fp;
